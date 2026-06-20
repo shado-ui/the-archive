@@ -1,0 +1,591 @@
+# MASTER ARCHITECT PROMPT — THE KRISHA ARCHIVE
+
+Act as a Principal Software Architect, Senior Database Engineer, Lead Flutter Engineer, Security Engineer, UX Architect, DevOps Engineer, and Product Designer.
+
+You are designing a production-grade native application called:
+
+# THE KRISHA ARCHIVE
+
+A deeply personal, highly structured, private, secure, cross-platform life archive designed to preserve, organize, analyze, and remember every meaningful detail about a person and a relationship.
+
+This is NOT a web application.
+
+The application must compile natively for:
+
+* iOS (iPhone + iPad optimized)
+* Android
+* Windows Desktop
+* macOS Desktop
+
+Technology Stack:
+
+Frontend:
+
+* Flutter (Latest Stable)
+* Dart
+* Riverpod State Management
+* GoRouter Navigation
+* Material 3 + Adaptive UI
+
+Backend:
+
+* Supabase
+* PostgreSQL
+* Supabase Authentication
+* Supabase Realtime
+* Supabase Storage
+* Row Level Security (RLS)
+
+Security:
+
+* AES-256 client-side encryption
+* Secure Storage
+* Biometric Authentication
+* Face ID
+* Touch ID
+* Android Biometrics
+* Local Vault Encryption
+
+The final output must be production-grade and include:
+
+1. Complete PostgreSQL schema.sql
+2. Complete RLS Policies
+3. Database Relationships Diagram
+4. Flutter Folder Structure
+5. Dart Models
+6. Repositories
+7. Services
+8. State Management Architecture
+9. UI Architecture
+10. Navigation Architecture
+11. Supabase Integration
+12. Encryption Layer
+13. Sync Strategy
+14. Offline-First Strategy
+15. Backup & Recovery Strategy
+16. Notifications System
+17. Search System
+18. Tagging System
+19. AI Insights System
+20. Full Screen Layout Designs
+
+The system must be capable of storing every possible detail indefinitely.
+
+=================================================
+AUTHENTICATION SYSTEM
+=====================
+
+Build a complete authentication layer.
+
+Features:
+
+* Email Login
+* Email Signup
+* Password Reset
+* Session Persistence
+* Multi-device Sync
+* Route Guards
+* Session Validation
+* Biometric Unlock
+* Auto Lock After Inactivity
+
+No data may be displayed without an authenticated session.
+
+=================================================
+MASTER DASHBOARD
+================
+
+Create a central dashboard displaying:
+
+* Relationship Status
+* Anniversary Countdown
+* Birthday Countdown
+* Monthsary Countdown
+* Recent Memories
+* Timeline Activity
+* Upcoming Events
+* Relationship Statistics
+* Mood Insights
+* Calendar Overview
+* Favorite Things Summary
+* Quick Add Buttons
+
+=================================================
+SECURE CIPHER VAULT
+===================
+
+Encrypted password manager.
+
+Fields:
+
+id UUID
+user_id UUID
+platform_name TEXT
+website_url TEXT
+username_email TEXT
+encrypted_password TEXT
+recovery_email TEXT
+security_questions TEXT
+notes TEXT
+created_at TIMESTAMP
+updated_at TIMESTAMP
+
+Requirements:
+
+* AES-256 Encryption
+* Never store plaintext passwords
+* Client-side encryption only
+* Master Secret Key
+* Biometric Unlock
+
+=================================================
+COMPLETE KRISHA PROFILE
+=======================
+
+Master profile storing everything.
+
+Personal Information:
+
+* Full Name
+* Nicknames
+* Birthday
+* Zodiac Sign
+* Favorite Color
+* Favorite Flower
+* Favorite Animal
+* Favorite Food
+* Favorite Drink
+* Favorite Perfume
+* Favorite Brands
+* Favorite Clothing Styles
+* Shoe Size
+* Ring Size
+* Hobbies
+* Dreams
+* Goals
+* Bucket List
+* Fears
+* Insecurities
+* Strengths
+* Weaknesses
+* Personality Notes
+
+=================================================
+LOVE LANGUAGE DATABASE
+======================
+
+Store:
+
+* Acts of Service
+* Quality Time
+* Words of Affirmation
+* Physical Affection
+* Gifts
+
+Track:
+
+* What Works
+* What Doesn't
+* Historical Success Rate
+* Notes
+* Examples
+
+=================================================
+WAYS TO HER HEART
+=================
+
+Store:
+
+* Core Emotional Needs
+* Relationship Rules
+* Boundaries
+* Things That Make Her Happy
+* Things That Hurt Her
+* Things To Avoid
+* Successful Relationship Moments
+* Lessons Learned
+
+=================================================
+EMOTIONAL SUPPORT SYSTEM
+========================
+
+Ways To Comfort Her
+
+Fields:
+
+* Trigger
+* Situation
+* Severity
+* Action Steps
+* Recommended Responses
+* Things To Avoid
+* Comfort Success Rating
+
+How To Calm Her Down
+
+Fields:
+
+* Trigger
+* Symptoms
+* Calming Techniques
+* Messages To Send
+* Physical Comfort Methods
+* Follow-up Actions
+
+=================================================
+PREFERENCE DATABASE
+===================
+
+Store everything she likes.
+
+Categories:
+
+Food
+Snacks
+Fast Food
+Drinks
+Desserts
+Movies
+TV Shows
+Music
+Artists
+Books
+Games
+Activities
+Vacation Spots
+Restaurants
+Shopping Stores
+Clothing
+Jewelry
+Flowers
+Perfumes
+Colors
+Animals
+
+Each record:
+
+* Rating
+* Priority
+* Notes
+* Date Added
+* Last Updated
+
+=================================================
+MEMORIES & STORIES ARCHIVE
+==========================
+
+Visual memory system.
+
+Fields:
+
+* Title
+* Story
+* Date
+* Location
+* Images
+* Videos
+* Tags
+* Mood
+* Importance Score
+
+Views:
+
+* Gallery
+* Masonry Gallery
+* Timeline
+* Calendar
+* Story Reader
+
+=================================================
+TIMELINE ENGINE
+===============
+
+Unified timeline.
+
+Everything appears here:
+
+* Stories
+* Events
+* Quotes
+* Arguments
+* Gifts
+* Birthdays
+* Anniversaries
+* Notes
+* Memories
+
+Filters:
+
+* Date
+* Category
+* Tags
+* Mood
+* Importance
+
+=================================================
+RELATIONSHIP EVENT TRACKER
+==========================
+
+Track:
+
+* Anniversary
+* Monthsary
+* Birthday
+* First Meeting
+* First Call
+* First Date
+* First Gift
+* First Kiss
+* Custom Events
+
+Countdown Widgets Required.
+
+=================================================
+PERIOD TRACKER
+==============
+
+Track:
+
+* Start Date
+* End Date
+* Symptoms
+* Mood
+* Flow Level
+* Pain Level
+* Notes
+
+Features:
+
+* Prediction Engine
+* Calendar Overlay
+* Trend Analysis
+* Cycle Statistics
+
+=================================================
+QUOTE VAULT
+===========
+
+Store everything she says.
+
+Fields:
+
+* Quote
+* Date
+* Context
+* Emotion
+* Significance
+* Tags
+
+Searchable.
+
+=================================================
+CONFLICT LOG
+============
+
+Private reflection archive.
+
+Fields:
+
+* Date
+* What Happened
+* Emotional Impact
+* Root Cause
+* Resolution
+* Lessons Learned
+* Personal Growth Notes
+
+=================================================
+SOCIAL MATRIX
+=============
+
+People She Likes
+
+Store:
+
+* Name
+* Relationship
+* Notes
+* Topics
+* Positive Traits
+
+People She Dislikes
+
+Store:
+
+* Name
+* Reason
+* Status
+* Interaction Guidelines
+
+=================================================
+GIFTS DATABASE
+==============
+
+Track:
+
+* Gift Ideas
+* Purchased Gifts
+* Gift History
+* Budget
+* Reactions
+* Success Score
+
+=================================================
+HEALTH & WELLNESS DATABASE
+==========================
+
+Track:
+
+* Allergies
+* Medical Notes
+* Dietary Preferences
+* Comfort Foods
+* Stress Triggers
+* Sleep Notes
+* Wellness Preferences
+
+=================================================
+PHOTO & MEDIA ARCHIVE
+=====================
+
+Support:
+
+* Images
+* Videos
+* Voice Notes
+* Documents
+
+Features:
+
+* Albums
+* Tags
+* Search
+* AI Categorization
+
+=================================================
+ADVANCED SEARCH ENGINE
+======================
+
+Global Search across:
+
+* Stories
+* Events
+* Quotes
+* Preferences
+* Timeline
+* Social Matrix
+* Vault
+
+Search by:
+
+* Text
+* Tags
+* Date
+* Category
+* Mood
+
+=================================================
+ANALYTICS SYSTEM
+================
+
+Generate:
+
+* Relationship Statistics
+* Memory Counts
+* Timeline Activity
+* Mood Trends
+* Event Frequency
+* Favorite Categories
+
+=================================================
+NOTIFICATIONS SYSTEM
+====================
+
+Reminders:
+
+* Anniversary
+* Monthsary
+* Birthday
+* Period Predictions
+* Gift Reminders
+* Custom Events
+
+=================================================
+UI REQUIREMENTS
+===============
+
+Responsive layouts for:
+
+* Mobile
+* Tablet
+* Desktop
+
+Required Screens:
+
+* Splash Screen
+* Login
+* Signup
+* Dashboard
+* Timeline
+* Calendar
+* Gallery
+* Stories
+* Vault
+* Preferences
+* Quotes
+* Social Matrix
+* Period Tracker
+* Gifts
+* Analytics
+* Settings
+
+=================================================
+DATABASE REQUIREMENTS
+=====================
+
+Generate:
+
+* Fully normalized PostgreSQL schema
+* UUID primary keys
+* Foreign Keys
+* Indexes
+* Constraints
+* Audit Columns
+* Soft Deletes
+* Created At
+* Updated At
+
+Every table must support:
+
+created_at
+updated_at
+deleted_at
+
+=================================================
+FINAL OUTPUT
+============
+
+Provide:
+
+1. Full schema.sql
+2. Complete Flutter Project Structure
+3. All Dart Models
+4. Repositories
+5. Services
+6. Supabase Integration
+7. Riverpod Providers
+8. GoRouter Configuration
+9. Encryption Implementation
+10. Responsive Dashboard Screen
+11. Responsive Vault Screen
+12. Timeline Screen
+13. Calendar Screen
+14. Gallery Screen
+15. Authentication Flow
+16. State Management
+17. Security Architecture
+18. Database Diagram
+19. Sync Architecture
+20. Production Deployment Guide
+
+The generated solution must be scalable, secure, maintainable, enterprise-grade, and capable of storing every meaningful detail about Krisha and the relationship in an organized, searchable, chronological archive.
