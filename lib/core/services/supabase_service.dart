@@ -11,7 +11,7 @@ class SupabaseService {
       ),
       anonKey: const String.fromEnvironment(
         'SUPABASE_ANON_KEY', 
-        defaultValue: 'your-anon-key-placeholder',
+        defaultValue: 'sb_publishable_zpWsEz34jfAqQeRVGItTmA_blRZv2dM',
       ),
     );
   }
