@@ -2,8 +2,8 @@ name: Build and Release iOS IPA
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
@@ -24,32 +24,13 @@ jobs:
 
       - name: Build iOS IPA
         run: |
-          flutter build ios --release --no-codesign \
+          flutter build ipa --export-method app-store \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-          mkdir -p build/ios/ipa
-          cd build/ios/iphoneos
-          mkdir -p Payload
-          cp -R Runner.app Payload/
-          zip -r -q ../ipa/app.ipa Payload
-          cd ../../..
 
-      - name: Create release directory
-        run: mkdir -p release
-
-      - name: Copy IPA to release
-        run: cp build/ios/ipa/app.ipa release/app-$(date +%Y%m%d-%H%M%S).ipa
-
-      - name: Upload IPA as artifact
-        uses: actions/upload-artifact@v4
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: ios-ipa
-          path: release/*.ipa
-
-      - name: Commit and push to release branch
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add release/
-          git commit -m "Add iOS IPA release - $(date)" || true
-          git push origin workflow-ios-release || true
+          files: build/ios/ipa/*.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

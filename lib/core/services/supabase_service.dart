@@ -6,11 +6,11 @@ class SupabaseService {
   static Future<void> initialize() async {
     await Supabase.initialize(
       url: const String.fromEnvironment(
-        'SUPABASE_URL', 
-        defaultValue: 'https://your-supabase-url.supabase.co',
+        'SUPABASE_URL',
+        defaultValue: 'https://ryefomdncqtnmiqzlknt.supabase.co',
       ),
       anonKey: const String.fromEnvironment(
-        'SUPABASE_ANON_KEY', 
+        'SUPABASE_ANON_KEY',
         defaultValue: 'sb_publishable_zpWsEz34jfAqQeRVGItTmA_blRZv2dM',
       ),
     );
