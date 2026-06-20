@@ -103,9 +103,21 @@ jobs:
       - name: Package IPA
              - name: Create release directory and copy IPA
         run: |
+          mkdir -p Payload
+          cp build/krisha-archive-ios.ipa release/krisha-archive-ios-$(date +%Y%m%d-%H%M%S).ipa
+
+      - name: Create release directory and copy IPA
+        run: |
           mkdir -p release
           cp build/krisha-archive-ios.ipa release/krisha-archive-ios-$(date +%Y%m%d-%H%M%S).ipa
 
+      - name: Commit release to repository
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add release/
+          git commit -m "chore: add iOS IPA release - $(date)" || echo "No changes to commit"
+          git push origin main || echo "Failed to push"
       - name: Commit release to repository
         run: |
           git config --local user.email "action@github.com"
