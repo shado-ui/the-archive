@@ -4,8 +4,8 @@ platform :ios, '13.0'
 # CocoaPods analytics sends network stats. If you want to disable this, uncomment the next line:
 # cocoapods_disable_analytics
 
-# Flutter integration
-source 'https://github.com/CocoaPods/Specs.git'
+# Load Flutter pod helper scripts
+load File.join(File.dirname(File.realpath(__FILE__)), 'Flutter', 'podhelper.rb')
 
 target 'Runner' do
   use_frameworks!
