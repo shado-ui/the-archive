@@ -4,8 +4,9 @@
 -- Scopes: AES-256 client-side encrypted fields, complete RLS, automatic timeline updates
 -- ====================================================================
 
--- Enable UUID extension
+-- Enable required extensions
 create extension if not exists "uuid-ossp";
+create extension if not exists "pgcrypto";
 
 -- --------------------------------------------------------------------
 -- 0. Core Audit Triggers & Functions
@@ -43,6 +44,31 @@ create policy "Users can view and update their own profile"
 create trigger handle_updated_at_profiles
     before update on public.profiles
     for each row execute procedure update_updated_at_column();
+
+-- Auto-create profile when a new auth user registers (reads vault_salt from signup metadata)
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, vault_salt)
+  values (
+    new.id,
+    coalesce(
+      new.raw_user_meta_data->>'vault_salt',
+      encode(gen_random_bytes(16), 'hex')
+    )
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
 
 -- --------------------------------------------------------------------
 -- 2. Partner Profiles (Complete details about Krisha)

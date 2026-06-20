@@ -15,34 +15,71 @@ class AuthRepository extends BaseRepository {
 
   /// Authenticate user via Supabase Auth
   Future<AuthResponse> signIn(String email, String password) async {
-    return await client.auth.signInWithPassword(email: email, password: password);
-  }
-
-  /// Signup a new user account and insert the profile salt
-  Future<AuthResponse> signUp(String email, String password, String saltHex) async {
-    final response = await client.auth.signUp(email: email, password: password);
-    if (response.user != null) {
-      await client.from('profiles').insert({
-        'id': response.user!.id,
-        'vault_salt': saltHex,
-      });
+    final response = await client.auth.signInWithPassword(
+      email: email,
+      password: password,
+    );
+    final user = response.user;
+    if (user != null) {
+      final metadataSalt = user.userMetadata?['vault_salt'] as String?;
+      if (metadataSalt != null) {
+        await _ensureProfile(user.id, metadataSalt);
+      }
     }
     return response;
   }
 
-  /// Retrieve the client-side vault salt for a user profile
-  Future<String?> getVaultSalt(String email) async {
-    // Queries public endpoint for salt to derive key before login
-    try {
-      final response = await client
-          .from('profiles')
-          .select('vault_salt')
-          .limit(1)
-          .maybeSingle();
-      return response?['vault_salt'] as String?;
-    } catch (_) {
-      return null;
+  /// Signup a new user account and persist the vault salt via auth metadata.
+  /// Profile rows are created by the `handle_new_user` database trigger.
+  Future<AuthResponse> signUp(String email, String password, String saltHex) async {
+    final response = await client.auth.signUp(
+      email: email,
+      password: password,
+      data: {'vault_salt': saltHex},
+    );
+
+    // When email confirmation is disabled, a session exists and we can backfill directly.
+    if (response.session != null && response.user != null) {
+      await _ensureProfile(response.user!.id, saltHex);
     }
+    return response;
+  }
+
+  Future<void> _ensureProfile(String userId, String saltHex) async {
+    final existing = await client
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .maybeSingle();
+    if (existing == null) {
+      await client.from('profiles').insert({
+        'id': userId,
+        'vault_salt': saltHex,
+      });
+    }
+  }
+
+  /// Retrieve the vault salt for the currently authenticated user.
+  Future<String?> getVaultSalt() async {
+    final user = client.auth.currentUser;
+    if (user == null) return null;
+
+    final profile = await client
+        .from('profiles')
+        .select('vault_salt')
+        .eq('id', user.id)
+        .maybeSingle();
+    final profileSalt = profile?['vault_salt'] as String?;
+    if (profileSalt != null && profileSalt.isNotEmpty) {
+      return profileSalt;
+    }
+
+    final metadataSalt = user.userMetadata?['vault_salt'] as String?;
+    if (metadataSalt != null && metadataSalt.isNotEmpty) {
+      await _ensureProfile(user.id, metadataSalt);
+      return metadataSalt;
+    }
+    return null;
   }
 
   Future<void> signOut() async {

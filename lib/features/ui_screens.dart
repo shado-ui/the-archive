@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/constants/colors.dart';
 import '../core/models/dart_models.dart';
 import '../core/providers/state_providers.dart';
@@ -12,6 +13,19 @@ String generateUUID() {
   final random = Random.secure();
   final hex = List.generate(16, (i) => random.nextInt(256).toRadixString(16).padLeft(2, '0')).join();
   return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}';
+}
+
+String generateVaultSaltHex() {
+  final random = Random.secure();
+  return List.generate(32, (_) => random.nextInt(256))
+      .map((b) => b.toRadixString(16).padLeft(2, '0'))
+      .join();
+}
+
+String authErrorMessage(Object error) {
+  if (error is AuthException) return error.message;
+  if (error is PostgrestException) return error.message;
+  return error.toString().replaceFirst('Exception: ', '');
 }
 
 // --------------------------------------------------------------------
@@ -127,34 +141,49 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _loading = false;
 
   Future<void> _handleAuth() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email and password are required.")),
+      );
+      return;
+    }
+
     setState(() => _loading = true);
     final authRepo = ref.read(authRepositoryProvider);
     try {
       if (_isSignUp) {
-        if (_saltController.text.isEmpty) {
-          throw Exception("Vault setup requires a Salt generation");
+        final saltHex = _saltController.text.trim().isEmpty
+            ? generateVaultSaltHex()
+            : _saltController.text.trim();
+        _saltController.text = saltHex;
+
+        final response = await authRepo.signUp(email, password, saltHex);
+        if (!mounted) return;
+
+        if (response.session != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Account created. Set your vault password next.")),
+          );
+          context.go('/unlock');
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Signup successful. Check your email to confirm, then sign in.")),
+          );
         }
-        await authRepo.signUp(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-          _saltController.text.trim(),
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Signup Successful! Check your email to confirm.")),
-        );
       } else {
-        await authRepo.signIn(
-          _emailController.text.trim(),
-          _passwordController.text.trim(),
-        );
+        await authRepo.signIn(email, password);
+        if (!mounted) return;
         context.go('/unlock');
       }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Authentication Failed: ${e.toString()}")),
+        SnackBar(content: Text("Authentication failed: ${authErrorMessage(e)}")),
       );
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -217,9 +246,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           suffixIcon: IconButton(
                             icon: const Icon(Icons.autorenew_rounded, color: AppColors.auroraCyan),
                             onPressed: () {
-                              final hexBytes = List.generate(16, (i) => (i * 17) % 256);
-                              final generated = hexBytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-                              _saltController.text = generated;
+                              _saltController.text = generateVaultSaltHex();
                             },
                           ),
                           enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.glassBorder)),
@@ -240,7 +267,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
                     TextButton(
-                      onPressed: () => setState(() => _isSignUp = !_isSignUp),
+                      onPressed: () => setState(() {
+                        _isSignUp = !_isSignUp;
+                        if (_isSignUp && _saltController.text.isEmpty) {
+                          _saltController.text = generateVaultSaltHex();
+                        }
+                      }),
                       child: Text(
                         _isSignUp ? "Already have an account? Login" : "Create new private relationship archive",
                         style: const TextStyle(color: AppColors.auroraCyan),
@@ -279,8 +311,8 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
     
     try {
       if (user == null) throw Exception("Session inactive. Re-authenticate.");
-      final salt = await authRepo.getVaultSalt(user.email ?? '');
-      if (salt == null) throw Exception("Failed to retrieve derivation salt from profile.");
+      final salt = await authRepo.getVaultSalt();
+      if (salt == null) throw Exception("Failed to retrieve vault salt. Complete signup or contact support.");
       
       final derivedKey = await keyCustody.deriveKey(_passwordController.text.trim(), salt);
       await keyCustody.saveKeySecurely(derivedKey);
