@@ -101,11 +101,18 @@ jobs:
           flutter build ios --release --no-codesign --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Package IPA
+             - name: Create release directory and copy IPA
         run: |
-          cd build/ios/iphoneos
-          mkdir Payload
-          mv Runner.app Payload/
-          zip -r ../../krisha-archive-ios.ipa Payload
+          mkdir -p release
+          cp build/krisha-archive-ios.ipa release/krisha-archive-ios-$(date +%Y%m%d-%H%M%S).ipa
+
+      - name: Commit release to repository
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add release/
+          git commit -m "chore: add iOS IPA release - $(date)" || echo "No changes to commit"
+          git push origin main || echo "Failed to push"
 
       - name: Upload iOS/iPadOS Artifact
         uses: actions/upload-artifact@v4
