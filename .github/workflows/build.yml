@@ -100,13 +100,15 @@ jobs:
           # iOS/iPad builds on CI are built without code signing first
           flutter build ios --release --no-codesign --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
 
-      - name: Compress iOS Build
+      - name: Package IPA
         run: |
           cd build/ios/iphoneos
-          zip -r ../../krisha-archive-ios.zip Runner.app
+          mkdir Payload
+          mv Runner.app Payload/
+          zip -r ../../krisha-archive-ios.ipa Payload
 
       - name: Upload iOS/iPadOS Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: krisha-archive-ios-zip
-          path: build/krisha-archive-ios.zip
+          name: krisha-archive-ios-ipa
+          path: build/krisha-archive-ios.ipa
