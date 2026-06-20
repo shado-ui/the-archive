@@ -100,9 +100,6 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Regenerate iOS Platform
-        run: flutter create --platforms=ios .
-
       - name: Build Unsigned iOS App
         run: |
           flutter build ios --release --no-codesign \
