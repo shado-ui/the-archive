@@ -92,6 +92,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Regenerate iOS Platform Templates
+        run: flutter create --project-name=krisha_archive --platforms=ios .
+
       - name: Build iOS Application (Unsigned)
         run: |
           # iOS/iPad builds on CI are built without code signing first
