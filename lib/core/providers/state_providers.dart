@@ -3,10 +3,60 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../security/key_custody.dart';
 import '../repositories/repositories.dart';
 import '../models/dart_models.dart';
+import '../constants/colors.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // --------------------------------------------------------------------
 // 1. Core Services Providers
 // --------------------------------------------------------------------
+
+// Theme Providers
+final themeProvider = StateNotifierProvider<ThemeNotifier, AppTheme>((ref) {
+  return ThemeNotifier();
+});
+
+final isDarkModeProvider = StateNotifierProvider<DarkModeNotifier, bool>((ref) {
+  return DarkModeNotifier();
+});
+
+class ThemeNotifier extends StateNotifier<AppTheme> {
+  ThemeNotifier() : super(AppTheme.cosmicDark) {
+    _loadTheme();
+  }
+
+  Future<void> _loadTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    final themeIndex = prefs.getInt('app_theme') ?? 0;
+    state = AppTheme.values[themeIndex];
+  }
+
+  Future<void> setTheme(AppTheme theme) async {
+    state = theme;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('app_theme', theme.index);
+  }
+}
+
+class DarkModeNotifier extends StateNotifier<bool> {
+  DarkModeNotifier() : super(true) {
+    _loadDarkMode();
+  }
+
+  Future<void> _loadDarkMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    state = prefs.getBool('dark_mode') ?? true;
+  }
+
+  Future<void> setDarkMode(bool isDark) async {
+    state = isDark;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('dark_mode', isDark);
+  }
+
+  void toggleDarkMode() {
+    setDarkMode(!state);
+  }
+}
 final supabaseClientProvider = Provider<SupabaseClient>((ref) {
   return Supabase.instance.client;
 });

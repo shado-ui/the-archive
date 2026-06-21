@@ -26,56 +26,94 @@ class TheKrishaArchive extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
     final keyCustody = ref.watch(keyCustodyProvider);
+    final appTheme = ref.watch(themeProvider);
+    final isDark = ref.watch(isDarkModeProvider);
 
     return SessionLockGate(
       keyCustody: keyCustody,
-      timeout: const Duration(minutes: 5), // Auto-lock vault key after 5 minutes of inactivity
+      timeout: const Duration(minutes: 5),
       onLocked: () {
-        // Clear Riverpod vault key state
         ref.read(vaultKeyProvider.notifier).state = null;
-        // Redirect back to Vault Unlock gate
         router.go('/unlock');
       },
       child: MaterialApp.router(
         title: 'The Krisha Archive',
         debugShowCheckedModeBanner: false,
-        themeMode: ThemeMode.dark,
+        themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
         theme: ThemeData(
           useMaterial3: true,
-          brightness: Brightness.dark,
-          colorScheme: const ColorScheme.dark(
-            primary: AppColors.roseSpark,
-            secondary: AppColors.auroraCyan,
-            surface: AppColors.spaceDark,
+          brightness: Brightness.light,
+          colorScheme: ColorScheme.light(
+            primary: AppColors.getAccent(appTheme),
+            secondary: AppColors.roseSpark,
+            surface: AppColors.getSurface(appTheme, false),
             error: AppColors.errorRed,
           ),
-          scaffoldBackgroundColor: AppColors.spaceDark,
-          appBarTheme: const AppBarTheme(
+          scaffoldBackgroundColor: AppColors.getBackground(appTheme, false),
+          appBarTheme: AppBarTheme(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            iconTheme: IconThemeData(color: Colors.white),
-            titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            iconTheme: IconThemeData(color: AppColors.getTextPrimary(false)),
+            titleTextStyle: TextStyle(color: AppColors.getTextPrimary(false), fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          cardTheme: CardTheme(
+            color: AppColors.getSurface(appTheme, false),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: BorderSide(color: AppColors.getGlassBorder(false)),
+            ),
+          ),
+          chipTheme: ChipThemeData(
+            backgroundColor: AppColors.getSurface(appTheme, false),
+            labelStyle: TextStyle(color: AppColors.getTextPrimary(false)),
+            side: BorderSide(color: AppColors.getGlassBorder(false)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          navigationRailTheme: NavigationRailThemeData(
+            backgroundColor: AppColors.getSurface(appTheme, false),
+            selectedIconTheme: IconThemeData(color: AppColors.getAccent(appTheme)),
+            unselectedIconTheme: IconThemeData(color: AppColors.getTextMuted(false)),
+            selectedLabelTextStyle: TextStyle(color: AppColors.getAccent(appTheme)),
+            unselectedLabelTextStyle: TextStyle(color: AppColors.getTextMuted(false)),
+          ),
+        ),
+        darkTheme: ThemeData(
+          useMaterial3: true,
+          brightness: Brightness.dark,
+          colorScheme: ColorScheme.dark(
+            primary: AppColors.getAccent(appTheme),
+            secondary: AppColors.roseSpark,
+            surface: AppColors.getSurface(appTheme, true),
+            error: AppColors.errorRed,
+          ),
+          scaffoldBackgroundColor: AppColors.getBackground(appTheme, true),
+          appBarTheme: AppBarTheme(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            iconTheme: IconThemeData(color: AppColors.getTextPrimary(true)),
+            titleTextStyle: TextStyle(color: AppColors.getTextPrimary(true), fontSize: 20, fontWeight: FontWeight.bold),
           ),
           cardTheme: CardTheme(
             color: AppColors.cardBg,
             elevation: 0,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: AppColors.glassBorder),
+              side: BorderSide(color: AppColors.getGlassBorder(true)),
             ),
           ),
           chipTheme: ChipThemeData(
             backgroundColor: AppColors.cardBg,
-            labelStyle: const TextStyle(color: Colors.white),
-            side: const BorderSide(color: AppColors.glassBorder),
+            labelStyle: TextStyle(color: AppColors.getTextPrimary(true)),
+            side: BorderSide(color: AppColors.getGlassBorder(true)),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
-          navigationRailTheme: const NavigationRailThemeData(
-            backgroundColor: AppColors.nebulaViolet,
-            selectedIconTheme: IconThemeData(color: AppColors.roseSpark),
-            unselectedIconTheme: IconThemeData(color: AppColors.textMuted),
-            selectedLabelTextStyle: TextStyle(color: AppColors.roseSpark),
-            unselectedLabelTextStyle: TextStyle(color: AppColors.textMuted),
+          navigationRailTheme: NavigationRailThemeData(
+            backgroundColor: AppColors.getSurface(appTheme, true),
+            selectedIconTheme: IconThemeData(color: AppColors.getAccent(appTheme)),
+            unselectedIconTheme: IconThemeData(color: AppColors.getTextMuted(true)),
+            selectedLabelTextStyle: TextStyle(color: AppColors.getAccent(appTheme)),
+            unselectedLabelTextStyle: TextStyle(color: AppColors.getTextMuted(true)),
           ),
         ),
         routerConfig: router,

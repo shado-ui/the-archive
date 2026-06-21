@@ -437,8 +437,11 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final appTheme = ref.watch(themeProvider);
+    final isDark = ref.watch(isDarkModeProvider);
+    
     return Scaffold(
-      backgroundColor: AppColors.spaceDark,
+      backgroundColor: AppColors.getBackground(appTheme, isDark),
       body: Center(
         child: Container(
           width: 400,
@@ -537,6 +540,8 @@ class MainNavigationScaffold extends ConsumerWidget {
     final isDesktop = MediaQuery.of(context).size.width > 1000;
     final router = GoRouter.of(context);
     final currentRoute = router.state.matchedLocation;
+    final appTheme = ref.watch(themeProvider);
+    final isDark = ref.watch(isDarkModeProvider);
 
     final groups = [
       const SidebarGroup(
@@ -698,15 +703,15 @@ class MainNavigationScaffold extends ConsumerWidget {
     }
 
     return Scaffold(
-      backgroundColor: AppColors.spaceDark,
+      backgroundColor: AppColors.getBackground(appTheme, isDark),
       body: Row(
         children: [
           if (isDesktop) ...[
             Container(
               width: 270,
-              decoration: const BoxDecoration(
-                color: AppColors.nebulaViolet,
-                border: Border(right: BorderSide(color: AppColors.glassBorder, width: 1)),
+              decoration: BoxDecoration(
+                color: AppColors.getSurface(appTheme, isDark),
+                border: Border(right: BorderSide(color: AppColors.getGlassBorder(isDark), width: 1)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -744,6 +749,67 @@ class MainNavigationScaffold extends ConsumerWidget {
                             ],
                           ),
                         ),
+                        IconButton(
+                          icon: Icon(isDark ? Icons.dark_mode : Icons.light_mode, color: AppColors.textSecondary, size: 20),
+                          onPressed: () => ref.read(isDarkModeProvider.notifier).toggleDarkMode(),
+                        ),
+                        const SizedBox(width: 8),
+                        PopupMenuButton<AppTheme>(
+                          icon: Icon(Icons.palette, color: AppColors.textSecondary, size: 20),
+                          onSelected: (theme) => ref.read(themeProvider.notifier).setTheme(theme),
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: AppTheme.cosmicDark,
+                              child: Row(
+                                children: [
+                                  Container(width: 16, height: 16, decoration: const BoxDecoration(color: AppColors.auroraCyan, shape: BoxShape.circle)),
+                                  const SizedBox(width: 8),
+                                  const Text('Cosmic Dark', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: AppTheme.midnightBlue,
+                              child: Row(
+                                children: [
+                                  Container(width: 16, height: 16, decoration: const BoxDecoration(color: AppColors.midnightAccent, shape: BoxShape.circle)),
+                                  const SizedBox(width: 8),
+                                  const Text('Midnight Blue', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: AppTheme.sunsetGlow,
+                              child: Row(
+                                children: [
+                                  Container(width: 16, height: 16, decoration: const BoxDecoration(color: AppColors.sunsetAccent, shape: BoxShape.circle)),
+                                  const SizedBox(width: 8),
+                                  const Text('Sunset Glow', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: AppTheme.forestGreen,
+                              child: Row(
+                                children: [
+                                  Container(width: 16, height: 16, decoration: const BoxDecoration(color: AppColors.forestAccent, shape: BoxShape.circle)),
+                                  const SizedBox(width: 8),
+                                  const Text('Forest Green', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: AppTheme.oceanDepth,
+                              child: Row(
+                                children: [
+                                  Container(width: 16, height: 16, decoration: const BoxDecoration(color: AppColors.oceanAccent, shape: BoxShape.circle)),
+                                  const SizedBox(width: 8),
+                                  const Text('Ocean Depth', style: TextStyle(color: Colors.white)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -761,8 +827,8 @@ class MainNavigationScaffold extends ConsumerWidget {
                                 padding: const EdgeInsets.only(left: 12, top: 20, bottom: 8),
                                 child: Text(
                                   g.title,
-                                  style: const TextStyle(
-                                    color: AppColors.textMuted,
+                                  style: TextStyle(
+                                    color: AppColors.getTextMuted(isDark),
                                     fontSize: 10,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 1.5,
@@ -791,12 +857,18 @@ class MainNavigationScaffold extends ConsumerWidget {
                                           children: [
                                             Icon(
                                               item.icon,
-                                              color: isSelected ? AppColors.roseSpark : AppColors.textSecondary,
+                                              color: isSelected ? AppColors.roseSpark : AppColors.getTextSecondary(isDark),
                                               size: 20,
                                             ),
                                             const SizedBox(width: 16),
                                             Text(
                                               item.label,
+                                              style: TextStyle(
+                                                color: isSelected ? AppColors.roseSpark : AppColors.getTextSecondary(isDark),
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
                                               style: TextStyle(
                                                 color: isSelected ? Colors.white : AppColors.textSecondary,
                                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
