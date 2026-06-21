@@ -331,6 +331,7 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
     setState(() => _loading = true);
     final keyCustody = ref.read(keyCustodyProvider);
     final authRepo = ref.read(authRepositoryProvider);
+    final partnerRepo = ref.read(partnerProfileRepositoryProvider);
     final user = ref.read(currentUserProvider);
     
     try {
@@ -358,6 +359,14 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
       }
       
       ref.read(vaultKeyProvider.notifier).state = keyCustody.vaultKey;
+      
+      // Check if partner profile exists, if not redirect to setup
+      final partnerProfile = await partnerRepo.getPartnerProfile(user.id);
+      if (partnerProfile == null && mounted) {
+        context.go('/setup');
+        return;
+      }
+      
       if (mounted) context.go('/dashboard');
     } catch (e) {
       if (mounted) {
@@ -417,9 +426,20 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
 
   Future<void> _unlockWithBiometrics() async {
     final keyCustody = ref.read(keyCustodyProvider);
+    final partnerRepo = ref.read(partnerProfileRepositoryProvider);
+    final user = ref.read(currentUserProvider);
+    
     final success = await keyCustody.unlockWithBiometrics();
     if (success) {
       ref.read(vaultKeyProvider.notifier).state = keyCustody.vaultKey;
+      
+      // Check if partner profile exists, if not redirect to setup
+      final partnerProfile = await partnerRepo.getPartnerProfile(user!.id);
+      if (partnerProfile == null && mounted) {
+        context.go('/setup');
+        return;
+      }
+      
       if (mounted) context.go('/dashboard');
     } else {
       if (mounted) {
@@ -511,6 +531,294 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+// --------------------------------------------------------------------
+// 3. Setup/Onboarding Screen
+// --------------------------------------------------------------------
+class SetupScreen extends ConsumerStatefulWidget {
+  const SetupScreen({super.key});
+
+  @override
+  ConsumerState<SetupScreen> createState() => _SetupScreenState();
+}
+
+class _SetupScreenState extends ConsumerState<SetupScreen> {
+  final _partnerNameController = TextEditingController();
+  final _nicknameController = TextEditingController();
+  int _currentStep = 0;
+  bool _loading = false;
+
+  final List<String> _steps = [
+    "Welcome to The Krisha Archive",
+    "Partner Information",
+    "Setup Complete",
+  ];
+
+  Future<void> _completeSetup() async {
+    setState(() => _loading = true);
+    try {
+      final partnerRepo = ref.read(partnerProfileRepositoryProvider);
+      final user = ref.read(currentUserProvider);
+      
+      if (user == null) throw Exception("No active session");
+      
+      final partnerProfile = PartnerProfile(
+        id: '',
+        userId: user.id,
+        fullName: _partnerNameController.text.trim(),
+        nicknames: _nicknameController.text.trim().isNotEmpty 
+          ? [_nicknameController.text.trim()] 
+          : [],
+        bucketList: [],
+        dreams: [],
+        favoriteBrands: [],
+        favoriteClothingStyles: [],
+        fears: [],
+        goals: [],
+        hobbies: [],
+        insecurities: [],
+        strengths: [],
+        weaknesses: [],
+      );
+      
+      await partnerRepo.upsertPartnerProfile(partnerProfile);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Setup complete! Welcome to The Krisha Archive")),
+        );
+        context.go('/dashboard');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Setup failed: ${e.toString()}")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _nextStep() {
+    if (_currentStep < _steps.length - 1) {
+      setState(() => _currentStep++);
+    }
+  }
+
+  void _previousStep() {
+    if (_currentStep > 0) {
+      setState(() => _currentStep--);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appTheme = ref.watch(themeProvider);
+    final isDark = ref.watch(isDarkModeProvider);
+    
+    return Scaffold(
+      backgroundColor: AppColors.getBackground(appTheme, isDark),
+      body: Center(
+        child: Container(
+          width: 500,
+          padding: const EdgeInsets.all(32),
+          child: GlassCard(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.history_edu_rounded, size: 60, color: AppColors.roseSpark),
+                const SizedBox(height: 24),
+                Text(
+                  _steps[_currentStep],
+                  style: TextStyle(
+                    color: AppColors.getTextPrimary(isDark),
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                _buildStepContent(),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    if (_currentStep > 0)
+                      Expanded(
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.getTextSecondary(isDark).withOpacity(0.3),
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: _previousStep,
+                          child: Text("Back", style: TextStyle(color: AppColors.getTextPrimary(isDark))),
+                        ),
+                      ),
+                    if (_currentStep > 0) const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.getAccent(appTheme),
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: _loading ? null : (_currentStep == _steps.length - 1 ? _completeSetup : _nextStep),
+                        child: _loading 
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : Text(_currentStep == _steps.length - 1 ? "Complete Setup" : "Next", 
+                              style: TextStyle(color: AppColors.getTextPrimary(isDark), fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_steps.length, (index) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: index == _currentStep ? AppColors.getAccent(appTheme) : AppColors.getTextMuted(isDark),
+                        shape: BoxShape.circle,
+                      ),
+                    );
+                  }),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepContent() {
+    final isDark = ref.watch(isDarkModeProvider);
+    
+    switch (_currentStep) {
+      case 0:
+        return Column(
+          children: [
+            Text(
+              "A secure digital archive for your relationship memories, milestones, and intimate moments.",
+              style: TextStyle(
+                color: AppColors.getTextSecondary(isDark),
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            _buildFeatureItem(Icons.favorite_rounded, "Memories & Stories", "Preserve your precious moments together"),
+            const SizedBox(height: 16),
+            _buildFeatureItem(Icons.lock_rounded, "Secure Vault", "AES-256 encrypted password manager"),
+            const SizedBox(height: 16),
+            _buildFeatureItem(Icons.calendar_month_rounded, "Timeline & Events", "Track anniversaries and milestones"),
+            const SizedBox(height: 16),
+            _buildFeatureItem(Icons.psychology_rounded, "Relationship Insights", "Love languages, comfort guidelines, and more"),
+          ],
+        );
+      case 1:
+        return Column(
+          children: [
+            TextField(
+              controller: _partnerNameController,
+              style: TextStyle(color: AppColors.getTextPrimary(isDark)),
+              decoration: InputDecoration(
+                labelText: "Partner's Full Name *",
+                labelStyle: TextStyle(color: AppColors.getTextSecondary(isDark)),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.getGlassBorder(isDark))),
+                hintText: "e.g., Krisha Johnson",
+                hintStyle: TextStyle(color: AppColors.getTextMuted(isDark)),
+              ),
+            ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: _nicknameController,
+              style: TextStyle(color: AppColors.getTextPrimary(isDark)),
+              decoration: InputDecoration(
+                labelText: "Nickname (Optional)",
+                labelStyle: TextStyle(color: AppColors.getTextSecondary(isDark)),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.getGlassBorder(isDark))),
+                hintText: "e.g., Baby, Love, Sweetheart",
+                hintStyle: TextStyle(color: AppColors.getTextMuted(isDark)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              "You can always update this information later in the Partner Profile section.",
+              style: TextStyle(
+                color: AppColors.getTextMuted(isDark),
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        );
+      case 2:
+        return Column(
+          children: [
+            const Icon(Icons.check_circle_rounded, size: 80, color: AppColors.successGreen),
+            const SizedBox(height: 16),
+            Text(
+              "You're all set!",
+              style: TextStyle(
+                color: AppColors.getTextPrimary(isDark),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "Your archive is ready. Start by adding your first memory or explore the dashboard.",
+              style: TextStyle(
+                color: AppColors.getTextSecondary(isDark),
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        );
+      default:
+        return const SizedBox();
+    }
+  }
+
+  Widget _buildFeatureItem(IconData icon, String title, String description) {
+    final isDark = ref.watch(isDarkModeProvider);
+    
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.getAccent(ref.watch(themeProvider)), size: 32),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: AppColors.getTextPrimary(isDark),
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                description,
+                style: TextStyle(
+                  color: AppColors.getTextSecondary(isDark),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

@@ -23,12 +23,13 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // If authenticated in Supabase but local vault is locked, force vault unlock
       final isUnlockingVault = state.matchedLocation == '/unlock';
+      final isSetup = state.matchedLocation == '/setup';
       if (!keyCustody.isUnlocked) {
-        return isUnlockingVault ? null : '/unlock';
+        return isUnlockingVault || isSetup ? null : '/unlock';
       }
 
-      // If logged in and unlocked, prevent access to login/unlock routes
-      if (isLoggingIn || isUnlockingVault) {
+      // If logged in and unlocked, prevent access to login/unlock/setup routes
+      if (isLoggingIn || isUnlockingVault || isSetup) {
         return '/dashboard';
       }
 
@@ -46,6 +47,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/unlock',
         builder: (context, state) => const VaultUnlockScreen(),
+      ),
+      GoRoute(
+        path: '/setup',
+        builder: (context, state) => const SetupScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => MainNavigationScaffold(child: child),
