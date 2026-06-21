@@ -36,11 +36,13 @@ class GlassCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
+  final double? elevation;
 
   const GlassCard({
     required this.child,
     this.padding = const EdgeInsets.all(20),
     this.onTap,
+    this.elevation,
     super.key,
   });
 
@@ -52,8 +54,17 @@ class GlassCard extends StatelessWidget {
         padding: padding,
         decoration: BoxDecoration(
           color: AppColors.glassBg,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: AppColors.glassBorder, width: 1),
+          boxShadow: elevation != null && elevation! > 0
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: elevation!,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: child,
       ),
@@ -386,25 +397,47 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.glassBg,
-        title: const Text("Set Up PIN", style: TextStyle(color: Colors.white)),
-        content: TextField(
-          controller: pinController,
-          obscureText: true,
-          maxLength: 6,
-          keyboardType: TextInputType.number,
-          style: const TextStyle(color: Colors.white),
-          decoration: const InputDecoration(
-            labelText: "Enter 6-digit PIN",
-            labelStyle: TextStyle(color: AppColors.textSecondary),
-            counterStyle: TextStyle(color: AppColors.textSecondary),
-          ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Set Up PIN", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            TextField(
+              controller: pinController,
+              obscureText: true,
+              maxLength: 6,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white, fontSize: 18),
+              textAlign: TextAlign.center,
+              decoration: InputDecoration(
+                labelText: "Enter 6-digit PIN",
+                labelStyle: const TextStyle(color: AppColors.textSecondary),
+                counterStyle: const TextStyle(color: AppColors.textSecondary),
+                filled: true,
+                fillColor: AppColors.cardBg,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.glassBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.glassBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppColors.auroraCyan),
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel", style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text("Cancel", style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () async {
               final pin = pinController.text.trim();
               if (pin.length == 6) {
@@ -419,7 +452,11 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
                 }
               }
             },
-            child: const Text("Set PIN", style: TextStyle(color: AppColors.auroraCyan)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.auroraCyan,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text("Set PIN", style: TextStyle(color: AppColors.spaceDark, fontWeight: FontWeight.bold, fontSize: 16)),
           ),
         ],
       ),
@@ -434,60 +471,101 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
     return Scaffold(
       backgroundColor: AppColors.getBackground(appTheme, isDark),
       body: Center(
-        child: Container(
-          width: 400,
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
-          child: GlassCard(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.lock_rounded, size: 60, color: AppColors.auroraCyan),
-                const SizedBox(height: 16),
-                const Text("Unlock Vault", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Text(
-                  _pinSet ? "Enter your PIN to unlock" : "Set up a PIN to secure your vault",
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: _pinController,
-                  obscureText: true,
-                  maxLength: 6,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: "6-digit PIN",
-                    labelStyle: TextStyle(color: AppColors.textSecondary),
-                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.glassBorder)),
-                    counterStyle: TextStyle(color: AppColors.textSecondary),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: GlassCard(
+              elevation: 8,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: AppColors.auroraCyan.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_rounded, size: 48, color: AppColors.auroraCyan),
                   ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.auroraCyan,
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  const SizedBox(height: 24),
+                  const Text("Vault Security", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(
+                    _pinSet ? "Enter your PIN to unlock" : "Create a PIN to secure your vault",
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                    textAlign: TextAlign.center,
                   ),
-                  onPressed: _loading ? null : (_pinSet ? _unlockVault : () => _showPinSetupDialog()),
-                  child: _loading 
-                    ? const CircularProgressIndicator(color: Colors.white) 
-                    : Text(_pinSet ? "Unlock" : "Set PIN", style: const TextStyle(color: AppColors.spaceDark, fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 16),
-                if (_biometricAvailable && _pinSet)
-                  Column(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.fingerprint_rounded, size: 50, color: AppColors.roseSpark),
-                        onPressed: _unlockWithBiometrics,
+                  const SizedBox(height: 32),
+                  TextField(
+                    controller: _pinController,
+                    obscureText: true,
+                    maxLength: 6,
+                    keyboardType: TextInputType.number,
+                    style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 8),
+                    textAlign: TextAlign.center,
+                    decoration: InputDecoration(
+                      labelText: "PIN",
+                      labelStyle: const TextStyle(color: AppColors.textSecondary),
+                      counterStyle: const TextStyle(color: AppColors.textSecondary),
+                      filled: true,
+                      fillColor: AppColors.cardBg,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppColors.glassBorder),
                       ),
-                      const Text("Biometric Unlock", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                    ],
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppColors.glassBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: const BorderSide(color: AppColors.auroraCyan, width: 2),
+                      ),
+                    ),
                   ),
-              ],
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.auroraCyan,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      onPressed: _loading ? null : (_pinSet ? _unlockVault : () => _showPinSetupDialog()),
+                      child: _loading 
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                        : Text(_pinSet ? "Unlock" : "Create PIN", style: const TextStyle(color: AppColors.spaceDark, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  if (_biometricAvailable && _pinSet)
+                    Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.cardBg,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.glassBorder),
+                          ),
+                          child: Column(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.fingerprint_rounded, size: 48, color: AppColors.roseSpark),
+                                onPressed: _unlockWithBiometrics,
+                              ),
+                              const SizedBox(height: 8),
+                              const Text("Biometric", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1196,7 +1274,7 @@ class DashboardScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text("Master Dashboard", style: TextStyle(color: Colors.white)),
+        title: const Text("Dashboard", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
@@ -1214,6 +1292,35 @@ class DashboardScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Welcome section
+            GlassCard(
+              elevation: 4,
+              padding: const EdgeInsets.all(24),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.roseSpark.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.favorite_rounded, size: 32, color: AppColors.roseSpark),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text("Welcome Back", style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                        const SizedBox(height: 4),
+                        const Text("Your Relationship Hub", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
             // Relational countdown matrix
             isDesktop
                 ? const Row(
@@ -1233,7 +1340,7 @@ class DashboardScreen extends ConsumerWidget {
                     ],
                   ),
             const SizedBox(height: 32),
-            const Text("Quick Actions", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text("Quick Actions", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             const Row(
               children: [
@@ -1245,7 +1352,7 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 32),
-            const Text("Recent Timeline Activities", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text("Recent Timeline Activities", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             timelineAsync.when(
               data: (events) {
@@ -1291,21 +1398,42 @@ class CountdownCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
+      elevation: 4,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-          const SizedBox(height: 12),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.goldAccent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.event_rounded, size: 20, color: AppColors.goldAccent),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "$countdownDays Days",
-                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                "$countdownDays",
+                style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
               ),
-              Text(dateLabel, style: const TextStyle(color: AppColors.goldAccent, fontSize: 13)),
+              Text(
+                "days",
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+              ),
             ],
-          )
+          ),
+          const SizedBox(height: 4),
+          Text(dateLabel, style: const TextStyle(color: AppColors.goldAccent, fontSize: 12, fontWeight: FontWeight.w500)),
         ],
       ),
     );
@@ -1321,27 +1449,24 @@ class ActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 90,
-      decoration: BoxDecoration(
-        color: AppColors.cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.glassBorder),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {},
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 8),
-              Text(label, style: const TextStyle(color: Colors.white, fontSize: 12)),
-            ],
+    return GlassCard(
+      elevation: 2,
+      padding: EdgeInsets.zero,
+      onTap: () {},
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 24),
           ),
-        ),
+          const SizedBox(height: 12),
+          Text(label, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
+        ],
       ),
     );
   }
