@@ -1694,46 +1694,63 @@ class CalendarScreen extends StatelessWidget {
 // --------------------------------------------------------------------
 // 9. Gallery Screen (Media Vault)
 // --------------------------------------------------------------------
-class GalleryScreen extends StatelessWidget {
+class GalleryScreen extends ConsumerWidget {
   const GalleryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final memoriesAsync = ref.watch(memoriesListProvider);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text("Memory Gallery", style: TextStyle(color: Colors.white)), backgroundColor: Colors.transparent),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(24),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-        ),
-        itemCount: 6,
-        itemBuilder: (context, idx) {
-          // Glass placeholders representing premium media archive images
-          return ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              color: AppColors.cardBg,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  const Icon(Icons.image_outlined, color: AppColors.textSecondary, size: 32),
+      body: memoriesAsync.when(
+        data: (memories) {
+          if (memories.isEmpty) {
+            return const Center(child: Text("No memories yet. Add your first memory.", style: TextStyle(color: AppColors.textSecondary)));
+          }
+          return GridView.builder(
+            padding: const EdgeInsets.all(24),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: memories.length,
+            itemBuilder: (context, idx) {
+              final memory = memories[idx];
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  color: AppColors.cardBg,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      const Icon(Icons.image_outlined, color: AppColors.textSecondary, size: 32),
                   Positioned(
                     bottom: 8,
                     left: 8,
+                    right: 8,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
-                      child: Text("Memory #$idx", style: const TextStyle(color: Colors.white, fontSize: 10)),
+                      child: Text(
+                        memory.title,
+                        style: const TextStyle(color: Colors.white, fontSize: 10),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
+              );
+            },
           );
         },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(child: Text("Error: $err", style: const TextStyle(color: AppColors.errorRed))),
       ),
     );
   }
@@ -1806,69 +1823,87 @@ class PeriodTrackerScreen extends ConsumerWidget {
 // --------------------------------------------------------------------
 // 11. Complete Krisha Profile Screen
 // --------------------------------------------------------------------
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final partnerProfileAsync = ref.watch(partnerProfileProvider);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text("Krisha's Personal Registry", style: TextStyle(color: Colors.white)), backgroundColor: Colors.transparent),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            const Center(
-              child: Column(
-                children: [
-                  CircleAvatar(radius: 50, backgroundColor: AppColors.roseSpark, child: Icon(Icons.person_rounded, size: 50, color: Colors.white)),
-                  SizedBox(height: 16),
-                  Text("Krisha", style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                  SizedBox(height: 4),
-                  Text("Birthday: October 24 • Scorpio ♏", style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text("Favorite Items", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 16),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 2.5,
-              children: const [
-                ProfileDetailCard(label: "Favorite Color", value: "Rose Pink / Deep Violet"),
-                ProfileDetailCard(label: "Flower Preference", value: "White Tulips"),
-                ProfileDetailCard(label: "Favorite Animal", value: "Hedgehog"),
-                ProfileDetailCard(label: "Favorite Food", value: "Spicy Cream Ramen"),
-                ProfileDetailCard(label: "Clothing Brand", value: "Zara / Reformation"),
-                ProfileDetailCard(label: "Shoe / Ring Size", value: "EU 38 / Size 6"),
+      body: partnerProfileAsync.when(
+        data: (partnerProfile) {
+          if (partnerProfile == null) {
+            return const Center(child: Text("Complete setup to view partner profile", style: TextStyle(color: AppColors.textSecondary)));
+          }
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Center(
+                  child: Column(
+                    children: [
+                      const CircleAvatar(radius: 50, backgroundColor: AppColors.roseSpark, child: Icon(Icons.person_rounded, size: 50, color: Colors.white)),
+                      const SizedBox(height: 16),
+                      Text(partnerProfile.fullName, style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      if (partnerProfile.nicknames.isNotEmpty)
+                        Text("Nickname: ${partnerProfile.nicknames.join(', ')}", style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                      if (partnerProfile.birthday != null)
+                        Text("Birthday: ${DateFormat('MMMM d').format(partnerProfile.birthday!)}${partnerProfile.zodiacSign != null ? ' • ${partnerProfile.zodiacSign}' : ''}", style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 32),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Favorite Items", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 16),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: 2.5,
+                  children: [
+                    ProfileDetailCard(label: "Favorite Color", value: partnerProfile.favoriteColor ?? "Not set"),
+                    ProfileDetailCard(label: "Flower Preference", value: partnerProfile.favoriteFlower ?? "Not set"),
+                    ProfileDetailCard(label: "Favorite Animal", value: partnerProfile.favoriteAnimal ?? "Not set"),
+                    ProfileDetailCard(label: "Favorite Food", value: partnerProfile.favoriteFood ?? "Not set"),
+                    ProfileDetailCard(label: "Clothing Brand", value: partnerProfile.favoriteBrands.isNotEmpty ? partnerProfile.favoriteBrands.join(', ') : "Not set"),
+                    ProfileDetailCard(label: "Shoe / Ring Size", value: "${partnerProfile.shoeSize ?? 'N/A'} / ${partnerProfile.ringSize ?? 'N/A'}"),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text("Aspirations & Dreams", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+                const SizedBox(height: 16),
+                GlassCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text("Strengths", style: const TextStyle(color: AppColors.roseSpark, fontSize: 14, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Text(partnerProfile.strengths.isNotEmpty ? partnerProfile.strengths.map((s) => "• $s").join("\n") : "Not set", style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      const SizedBox(height: 16),
+                      Text("Dreams & Aspirations", style: const TextStyle(color: AppColors.auroraCyan, fontSize: 14, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Text(partnerProfile.dreams.isNotEmpty ? partnerProfile.dreams.map((d) => "• $d").join("\n") : "Not set", style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    ],
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 32),
-            const Align(
-              alignment: Alignment.centerLeft,
-              child: Text("Aspirations & Dreams", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 16),
-            const GlassCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("• To open a private botanical cafe.", style: TextStyle(color: Colors.white, fontSize: 14)),
-                  SizedBox(height: 8),
-                  Text("• Travel through coastal towns in southern Italy.", style: TextStyle(color: Colors.white, fontSize: 14)),
-                ],
-              ),
-            )
-          ],
-        ),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(child: Text("Error: $err", style: const TextStyle(color: AppColors.errorRed))),
       ),
     );
   }
@@ -3261,95 +3296,179 @@ class AnalyticsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final timeLogsAsync = ref.watch(timeLogsProvider);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text("Advanced Life Analytics")),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Row 1: Time Allocation Glass panels
-            const Text(
-              "Category Time Allocation",
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            const GlassCard(
-              child: Column(
-                children: [
-                  AllocationRow(category: "Work / Study", percentage: 0.35, color: AppColors.auroraCyan),
-                  SizedBox(height: 12),
-                  AllocationRow(category: "Health & Fitness", percentage: 0.20, color: AppColors.successGreen),
-                  SizedBox(height: 12),
-                  AllocationRow(category: "Krisha Time ❤️", percentage: 0.20, color: AppColors.roseSpark),
-                  SizedBox(height: 12),
-                  AllocationRow(category: "Personal Growth & Learning", percentage: 0.15, color: AppColors.goldAccent),
-                  SizedBox(height: 12),
-                  AllocationRow(category: "Other & Sleep", percentage: 0.10, color: AppColors.textMuted),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
+      body: timeLogsAsync.when(
+        data: (timeLogs) {
+          // Calculate time allocation from actual data
+          final Map<String, double> categoryMinutes = {};
+          for (var log in timeLogs) {
+            final category = log.category ?? 'Other';
+            categoryMinutes[category] = (categoryMinutes[category] ?? 0) + (log.durationMinutes ?? 0);
+          }
+          
+          final totalMinutes = categoryMinutes.values.fold(0.0, (sum, val) => sum + val);
+          final workMinutes = categoryMinutes['Work'] ?? 0;
+          final healthMinutes = categoryMinutes['Health'] ?? 0;
+          final krishaMinutes = categoryMinutes['Krisha Time'] ?? 0;
+          final learningMinutes = categoryMinutes['Learning'] ?? 0;
+          final otherMinutes = categoryMinutes['Other'] ?? 0;
+          
+          final workPercent = totalMinutes > 0 ? workMinutes / totalMinutes : 0.35;
+          final healthPercent = totalMinutes > 0 ? healthMinutes / totalMinutes : 0.20;
+          final krishaPercent = totalMinutes > 0 ? krishaMinutes / totalMinutes : 0.20;
+          final learningPercent = totalMinutes > 0 ? learningMinutes / totalMinutes : 0.15;
+          final otherPercent = totalMinutes > 0 ? otherMinutes / totalMinutes : 0.10;
 
-            // Row 2: Weekly Time Report
-            const Text(
-              "Weekly Hours Spent Summary",
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            const Row(
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: StatCard(label: "Work", value: "42 hrs", color: AppColors.auroraCyan)),
-                SizedBox(width: 12),
-                Expanded(child: StatCard(label: "Learning", value: "12 hrs", color: AppColors.goldAccent)),
-                SizedBox(width: 12),
-                Expanded(child: StatCard(label: "Krisha", value: "10 hrs", color: AppColors.roseSpark)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Row(
-              children: [
-                Expanded(child: StatCard(label: "Fitness", value: "5 hrs", color: AppColors.successGreen)),
-                SizedBox(width: 12),
-                Expanded(child: StatCard(label: "Gaming", value: "8 hrs", color: AppColors.violetAccent)),
-                SizedBox(width: 12),
-                Expanded(child: StatCard(label: "Sleep", value: "56 hrs", color: AppColors.textSecondary)),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // Row 3: Habits completions visual panel
-            const Text(
-              "Habit Completion Averages",
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            const GlassCard(
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // Row 1: Time Allocation Glass panels
+                const Text(
+                  "Category Time Allocation",
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                GlassCard(
+                  child: Column(
                     children: [
-                      Text("Overall Habit Success Rate", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      Text("86%", style: TextStyle(color: AppColors.successGreen, fontSize: 18, fontWeight: FontWeight.bold)),
+                      AllocationRow(category: "Work / Study", percentage: workPercent, color: AppColors.auroraCyan),
+                      const SizedBox(height: 12),
+                      AllocationRow(category: "Health & Fitness", percentage: healthPercent, color: AppColors.successGreen),
+                      const SizedBox(height: 12),
+                      AllocationRow(category: "Krisha Time ❤️", percentage: krishaPercent, color: AppColors.roseSpark),
+                      const SizedBox(height: 12),
+                      AllocationRow(category: "Personal Growth & Learning", percentage: learningPercent, color: AppColors.goldAccent),
+                      const SizedBox(height: 12),
+                      AllocationRow(category: "Other & Sleep", percentage: otherPercent, color: AppColors.textMuted),
                     ],
                   ),
-                  SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.all(Radius.circular(8)),
-                    child: LinearProgressIndicator(
-                      value: 0.86,
-                      backgroundColor: AppColors.glassBorder,
-                      color: AppColors.successGreen,
-                      minHeight: 10,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 32),
+
+                // Row 2: Weekly Time Report
+                const Text(
+                  "Weekly Hours Spent Summary",
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: StatCard(label: "Work", value: "${(workMinutes / 60).toStringAsFixed(1)} hrs", color: AppColors.auroraCyan)),
+                    const SizedBox(width: 12),
+                    Expanded(child: StatCard(label: "Learning", value: "${(learningMinutes / 60).toStringAsFixed(1)} hrs", color: AppColors.goldAccent)),
+                    const SizedBox(width: 12),
+                    Expanded(child: StatCard(label: "Krisha", value: "${(krishaMinutes / 60).toStringAsFixed(1)} hrs", color: AppColors.roseSpark)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: StatCard(label: "Fitness", value: "${(healthMinutes / 60).toStringAsFixed(1)} hrs", color: AppColors.successGreen)),
+                    const SizedBox(width: 12),
+                    Expanded(child: StatCard(label: "Other", value: "${(otherMinutes / 60).toStringAsFixed(1)} hrs", color: AppColors.violetAccent)),
+                  ],
+                ),
+                const SizedBox(height: 32),
+
+                // Row 3: Goals Progress
+                const Text(
+                  "Goals Progress Overview",
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final goalsAsync = ref.watch(goalsProvider);
+                    return goalsAsync.when(
+                      data: (goals) {
+                        if (goals.isEmpty) {
+                          return const GlassCard(child: Text("No goals set yet", style: TextStyle(color: AppColors.textSecondary)));
+                        }
+                        return GlassCard(
+                          child: Column(
+                            children: goals.take(3).map((goal) {
+                              return Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(child: Text(goal.title, style: const TextStyle(color: Colors.white, fontSize: 14))),
+                                      Text("${((goal.progress ?? 0) * 100).toInt()}%", style: const TextStyle(color: AppColors.auroraCyan, fontSize: 12, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: goal.progress ?? 0,
+                                      backgroundColor: AppColors.glassBorder,
+                                      color: AppColors.auroraCyan,
+                                      minHeight: 6,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, _) => const SizedBox(),
+                    );
+                  },
+                ),
+                const SizedBox(height: 32),
+
+                // Row 4: Habit Streaks
+                const Text(
+                  "Current Habit Streaks",
+                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                Consumer(
+                  builder: (context, ref, _) {
+                    final habitsAsync = ref.watch(habitsProvider);
+                    return habitsAsync.when(
+                      data: (habits) {
+                        if (habits.isEmpty) {
+                          return const GlassCard(child: Text("No habits tracked yet", style: TextStyle(color: AppColors.textSecondary)));
+                        }
+                        return Row(
+                          children: habits.take(3).map((habit) {
+                            return Expanded(
+                              child: GlassCard(
+                                child: Column(
+                                  children: [
+                                    Icon(Icons.wb_sunny_rounded, color: AppColors.roseSpark, size: 32),
+                                    const SizedBox(height: 8),
+                                    Text(habit.title ?? "Habit", style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 4),
+                                    Text("${habit.streak ?? 0} days", style: const TextStyle(color: AppColors.textSecondary, fontSize: 10)),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, _) => const SizedBox(),
+                    );
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, _) => Center(child: Text("Error: $err", style: const TextStyle(color: AppColors.errorRed))),
       ),
     );
   }
