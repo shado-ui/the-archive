@@ -71,10 +71,11 @@ class KeyCustodyService {
 
     try {
       final authenticated = await _localAuth.authenticate(
-        localizedReason: 'Please authenticate to unlock your secure vault credential key',
+        localizedReason: 'Authenticate to unlock your vault',
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: true,
+          biometricOnly: false,
+          useErrorDialogs: true,
         ),
       );
 
@@ -89,6 +90,42 @@ class KeyCustodyService {
       return false;
     }
     return false;
+  }
+
+  /// Check if device supports biometrics
+  Future<bool> isBiometricAvailable() async {
+    final hasBiometrics = await _localAuth.canCheckBiometrics;
+    final isSupported = await _localAuth.isDeviceSupported();
+    return hasBiometrics && isSupported;
+  }
+
+  /// Save PIN for quick unlock
+  Future<void> savePin(String pin) async {
+    await _storage.write(key: 'vault_pin', value: pin);
+  }
+
+  /// Verify PIN and unlock vault
+  Future<bool> unlockWithPin(String pin) async {
+    final savedPin = await _storage.read(key: 'vault_pin');
+    if (savedPin == pin) {
+      final base64Key = await _storage.read(key: 'master_vault_key');
+      if (base64Key != null) {
+        _cachedVaultKey = base64Decode(base64Key);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Check if PIN is set
+  Future<bool> hasPin() async {
+    final pin = await _storage.read(key: 'vault_pin');
+    return pin != null;
+  }
+
+  /// Clear PIN
+  Future<void> clearPin() async {
+    await _storage.delete(key: 'vault_pin');
   }
 
   /// Decodes hex string to list of bytes

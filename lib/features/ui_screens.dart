@@ -301,7 +301,30 @@ class VaultUnlockScreen extends ConsumerStatefulWidget {
 
 class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
   final _passwordController = TextEditingController();
+  final _pinController = TextEditingController();
   bool _loading = false;
+  bool _usePin = false;
+  bool _biometricAvailable = false;
+  bool _pinSet = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkBiometricAndPin();
+  }
+
+  Future<void> _checkBiometricAndPin() async {
+    final keyCustody = ref.read(keyCustodyProvider);
+    final hasBio = await keyCustody.isBiometricAvailable();
+    final hasPin = await keyCustody.hasPin();
+    if (mounted) {
+      setState(() {
+        _biometricAvailable = hasBio;
+        _pinSet = hasPin;
+        _usePin = hasPin;
+      });
+    }
+  }
 
   Future<void> _unlockVault() async {
     setState(() => _loading = true);
@@ -311,22 +334,84 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
     
     try {
       if (user == null) throw Exception("Session inactive. Re-authenticate.");
-      final salt = await authRepo.getVaultSalt();
-      if (salt == null) throw Exception("Failed to retrieve vault salt. Complete signup or contact support.");
       
-      final derivedKey = await keyCustody.deriveKey(_passwordController.text.trim(), salt);
-      await keyCustody.saveKeySecurely(derivedKey);
+      if (_usePin) {
+        final pin = _pinController.text.trim();
+        if (pin.isEmpty) throw Exception("Please enter your PIN");
+        final success = await keyCustody.unlockWithPin(pin);
+        if (!success) throw Exception("Invalid PIN");
+      } else {
+        final salt = await authRepo.getVaultSalt();
+        if (salt == null) throw Exception("Failed to retrieve vault salt. Complete signup or contact support.");
+        
+        final password = _passwordController.text.trim();
+        if (password.isEmpty) throw Exception("Please enter your vault password");
+        
+        final derivedKey = await keyCustody.deriveKey(password, salt);
+        await keyCustody.saveKeySecurely(derivedKey);
+        
+        // Offer to set up PIN after successful password unlock
+        if (!_pinSet) {
+          _showPinSetupDialog(keyCustody);
+        }
+      }
       
-      // Update riverpod provider state
-      ref.read(vaultKeyProvider.notifier).state = derivedKey;
-      context.go('/dashboard');
+      ref.read(vaultKeyProvider.notifier).state = keyCustody.vaultKey;
+      if (mounted) context.go('/dashboard');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Vault Key Derivation Failed: ${e.toString()}")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Unlock Failed: ${e.toString()}")),
+        );
+      }
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _showPinSetupDialog(KeyCustodyService keyCustody) {
+    final pinController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.glassBg,
+        title: const Text("Set Up Quick PIN", style: TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: pinController,
+          obscureText: true,
+          maxLength: 6,
+          keyboardType: TextInputType.number,
+          style: const TextStyle(color: Colors.white),
+          decoration: const InputDecoration(
+            labelText: "Enter 6-digit PIN",
+            labelStyle: TextStyle(color: AppColors.textSecondary),
+            counterStyle: TextStyle(color: AppColors.textSecondary),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Skip", style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              final pin = pinController.text.trim();
+              if (pin.length == 6) {
+                await keyCustody.savePin(pin);
+                if (mounted) {
+                  setState(() => _pinSet = true);
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("PIN set successfully")),
+                  );
+                }
+              }
+            },
+            child: const Text("Set PIN", style: TextStyle(color: AppColors.auroraCyan)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _unlockWithBiometrics() async {
@@ -334,12 +419,20 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
     final success = await keyCustody.unlockWithBiometrics();
     if (success) {
       ref.read(vaultKeyProvider.notifier).state = keyCustody.vaultKey;
-      context.go('/dashboard');
+      if (mounted) context.go('/dashboard');
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Biometric verification failed. Use vault password.")),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Biometric verification failed. Use PIN or password.")),
+        );
+      }
     }
+  }
+
+  void _toggleUnlockMethod() {
+    setState(() {
+      _usePin = !_usePin;
+    });
   }
 
   @override
@@ -356,21 +449,37 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
               children: [
                 const Icon(Icons.lock_rounded, size: 60, color: AppColors.auroraCyan),
                 const SizedBox(height: 16),
-                const Text("Vault Decryption Required", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                const Text("Unlock Vault", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                const Text("AES-256 decryption key is not loaded in active RAM", style: TextStyle(color: AppColors.textSecondary, fontSize: 13), textAlign: TextAlign.center),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: "Master Vault Password",
-                    labelStyle: TextStyle(color: AppColors.textSecondary),
-                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.glassBorder)),
-                  ),
+                Text(
+                  _usePin ? "Enter your PIN for quick access" : "Enter your vault password to decrypt",
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
+                TextField(
+                  controller: _usePin ? _pinController : _passwordController,
+                  obscureText: true,
+                  maxLength: _usePin ? 6 : null,
+                  keyboardType: _usePin ? TextInputType.number : TextInputType.text,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: _usePin ? "6-digit PIN" : "Vault Password",
+                    labelStyle: const TextStyle(color: AppColors.textSecondary),
+                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.glassBorder)),
+                    counterStyle: const TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (_pinSet)
+                  TextButton(
+                    onPressed: _toggleUnlockMethod,
+                    child: Text(
+                      _usePin ? "Use password instead" : "Use PIN instead",
+                      style: const TextStyle(color: AppColors.auroraCyan),
+                    ),
+                  ),
+                const SizedBox(height: 8),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.auroraCyan,
@@ -378,14 +487,21 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
                   onPressed: _loading ? null : _unlockVault,
-                  child: _loading ? const CircularProgressIndicator(color: Colors.white) : const Text("Decrypt Database Key", style: TextStyle(color: AppColors.spaceDark, fontWeight: FontWeight.bold)),
+                  child: _loading 
+                    ? const CircularProgressIndicator(color: Colors.white) 
+                    : Text(_usePin ? "Unlock with PIN" : "Unlock with Password", style: const TextStyle(color: AppColors.spaceDark, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(height: 16),
-                IconButton(
-                  icon: const Icon(Icons.fingerprint_rounded, size: 50, color: AppColors.roseSpark),
-                  onPressed: _unlockWithBiometrics,
-                ),
-                const Text("Biometric Quick Unlock", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                if (_biometricAvailable)
+                  Column(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.fingerprint_rounded, size: 50, color: AppColors.roseSpark),
+                        onPressed: _unlockWithBiometrics,
+                      ),
+                      const Text("Biometric Quick Unlock", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                    ],
+                  ),
               ],
             ),
           ),
