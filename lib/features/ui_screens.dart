@@ -8,6 +8,7 @@ import '../core/constants/colors.dart';
 import '../core/models/dart_models.dart';
 import '../core/providers/state_providers.dart';
 import '../core/security/aes_encryption.dart';
+import '../core/security/key_custody.dart';
 
 String generateUUID() {
   final random = Random.secure();
