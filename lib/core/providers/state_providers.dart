@@ -66,16 +66,11 @@ final keyCustodyProvider = Provider<KeyCustodyService>((ref) {
 });
 
 // --------------------------------------------------------------------
-// 2. Encryption Key State Providers
+// 2. Vault Lock State Providers
 // --------------------------------------------------------------------
-final vaultKeyProvider = StateProvider<List<int>?>((ref) {
-  final custody = ref.watch(keyCustodyProvider);
-  return custody.vaultKey;
-});
-
 final vaultLockedProvider = StateProvider<bool>((ref) {
-  final key = ref.watch(vaultKeyProvider);
-  return key == null;
+  final custody = ref.watch(keyCustodyProvider);
+  return !custody.isUnlocked;
 });
 
 // --------------------------------------------------------------------
@@ -201,11 +196,8 @@ final partnerProfileProvider = FutureProvider<PartnerProfile?>((ref) async {
   return await repo.getPartnerProfile(user.id);
 });
 
-/// Secure Platform Credentials (requires vault unlocked)
+/// Secure Platform Credentials
 final vaultCredentialsProvider = FutureProvider<List<PlatformCredential>>((ref) async {
-  final isLocked = ref.watch(vaultLockedProvider);
-  if (isLocked) return [];
-  
   final repo = ref.watch(vaultRepositoryProvider);
   final user = ref.watch(currentUserProvider);
   if (user == null) return [];

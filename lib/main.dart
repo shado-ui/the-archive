@@ -33,7 +33,7 @@ class TheKrishaArchive extends ConsumerWidget {
       keyCustody: keyCustody,
       timeout: const Duration(minutes: 5),
       onLocked: () {
-        ref.read(vaultKeyProvider.notifier).state = null;
+        keyCustody.lockVault();
         router.go('/unlock');
       },
       child: MaterialApp.router(

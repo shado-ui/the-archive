@@ -7,7 +7,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/constants/colors.dart';
 import '../core/models/dart_models.dart';
 import '../core/providers/state_providers.dart';
-import '../core/security/aes_encryption.dart';
 import '../core/security/key_custody.dart';
 
 String generateUUID() {
@@ -301,10 +300,8 @@ class VaultUnlockScreen extends ConsumerStatefulWidget {
 }
 
 class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
-  final _passwordController = TextEditingController();
   final _pinController = TextEditingController();
   bool _loading = false;
-  bool _usePin = false;
   bool _biometricAvailable = false;
   bool _pinSet = false;
 
@@ -322,7 +319,6 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
       setState(() {
         _biometricAvailable = hasBio;
         _pinSet = hasPin;
-        _usePin = hasPin;
       });
     }
   }
@@ -330,35 +326,16 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
   Future<void> _unlockVault() async {
     setState(() => _loading = true);
     final keyCustody = ref.read(keyCustodyProvider);
-    final authRepo = ref.read(authRepositoryProvider);
     final partnerRepo = ref.read(partnerProfileRepositoryProvider);
     final user = ref.read(currentUserProvider);
     
     try {
       if (user == null) throw Exception("Session inactive. Re-authenticate.");
       
-      if (_usePin) {
-        final pin = _pinController.text.trim();
-        if (pin.isEmpty) throw Exception("Please enter your PIN");
-        final success = await keyCustody.unlockWithPin(pin);
-        if (!success) throw Exception("Invalid PIN");
-      } else {
-        final salt = await authRepo.getVaultSalt();
-        if (salt == null) throw Exception("Failed to retrieve vault salt. Complete signup or contact support.");
-        
-        final password = _passwordController.text.trim();
-        if (password.isEmpty) throw Exception("Please enter your vault password");
-        
-        final derivedKey = await keyCustody.deriveKey(password, salt);
-        await keyCustody.saveKeySecurely(derivedKey);
-        
-        // Offer to set up PIN after successful password unlock
-        if (!_pinSet) {
-          _showPinSetupDialog(keyCustody);
-        }
-      }
-      
-      ref.read(vaultKeyProvider.notifier).state = keyCustody.vaultKey;
+      final pin = _pinController.text.trim();
+      if (pin.isEmpty) throw Exception("Please enter your PIN");
+      final success = await keyCustody.unlockWithPin(pin);
+      if (!success) throw Exception("Invalid PIN");
       
       // Check if partner profile exists, if not redirect to setup
       final partnerProfile = await partnerRepo.getPartnerProfile(user.id);
@@ -379,13 +356,37 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
     }
   }
 
-  void _showPinSetupDialog(KeyCustodyService keyCustody) {
+  Future<void> _unlockWithBiometrics() async {
+    final keyCustody = ref.read(keyCustodyProvider);
+    final partnerRepo = ref.read(partnerProfileRepositoryProvider);
+    final user = ref.read(currentUserProvider);
+    
+    final success = await keyCustody.unlockWithBiometrics();
+    if (success) {
+      // Check if partner profile exists, if not redirect to setup
+      final partnerProfile = await partnerRepo.getPartnerProfile(user!.id);
+      if (partnerProfile == null && mounted) {
+        context.go('/setup');
+        return;
+      }
+      
+      if (mounted) context.go('/dashboard');
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Biometric verification failed. Use PIN.")),
+        );
+      }
+    }
+  }
+
+  void _showPinSetupDialog() {
     final pinController = TextEditingController();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.glassBg,
-        title: const Text("Set Up Quick PIN", style: TextStyle(color: Colors.white)),
+        title: const Text("Set Up PIN", style: TextStyle(color: Colors.white)),
         content: TextField(
           controller: pinController,
           obscureText: true,
@@ -401,12 +402,13 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Skip", style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text("Cancel", style: TextStyle(color: AppColors.textSecondary)),
           ),
           TextButton(
             onPressed: () async {
               final pin = pinController.text.trim();
               if (pin.length == 6) {
+                final keyCustody = ref.read(keyCustodyProvider);
                 await keyCustody.savePin(pin);
                 if (mounted) {
                   setState(() => _pinSet = true);
@@ -422,38 +424,6 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
         ],
       ),
     );
-  }
-
-  Future<void> _unlockWithBiometrics() async {
-    final keyCustody = ref.read(keyCustodyProvider);
-    final partnerRepo = ref.read(partnerProfileRepositoryProvider);
-    final user = ref.read(currentUserProvider);
-    
-    final success = await keyCustody.unlockWithBiometrics();
-    if (success) {
-      ref.read(vaultKeyProvider.notifier).state = keyCustody.vaultKey;
-      
-      // Check if partner profile exists, if not redirect to setup
-      final partnerProfile = await partnerRepo.getPartnerProfile(user!.id);
-      if (partnerProfile == null && mounted) {
-        context.go('/setup');
-        return;
-      }
-      
-      if (mounted) context.go('/dashboard');
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Biometric verification failed. Use PIN or password.")),
-        );
-      }
-    }
-  }
-
-  void _toggleUnlockMethod() {
-    setState(() {
-      _usePin = !_usePin;
-    });
   }
 
   @override
@@ -476,54 +446,45 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
                 const Text("Unlock Vault", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Text(
-                  _usePin ? "Enter your PIN for quick access" : "Enter your vault password to decrypt",
+                  _pinSet ? "Enter your PIN to unlock" : "Set up a PIN to secure your vault",
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
                 TextField(
-                  controller: _usePin ? _pinController : _passwordController,
+                  controller: _pinController,
                   obscureText: true,
-                  maxLength: _usePin ? 6 : null,
-                  keyboardType: _usePin ? TextInputType.number : TextInputType.text,
+                  maxLength: 6,
+                  keyboardType: TextInputType.number,
                   style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    labelText: _usePin ? "6-digit PIN" : "Vault Password",
-                    labelStyle: const TextStyle(color: AppColors.textSecondary),
-                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: AppColors.glassBorder)),
-                    counterStyle: const TextStyle(color: AppColors.textSecondary),
+                  decoration: const InputDecoration(
+                    labelText: "6-digit PIN",
+                    labelStyle: TextStyle(color: AppColors.textSecondary),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.glassBorder)),
+                    counterStyle: TextStyle(color: AppColors.textSecondary),
                   ),
                 ),
                 const SizedBox(height: 16),
-                if (_pinSet)
-                  TextButton(
-                    onPressed: _toggleUnlockMethod,
-                    child: Text(
-                      _usePin ? "Use password instead" : "Use PIN instead",
-                      style: const TextStyle(color: AppColors.auroraCyan),
-                    ),
-                  ),
-                const SizedBox(height: 8),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.auroraCyan,
                     minimumSize: const Size(double.infinity, 50),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   ),
-                  onPressed: _loading ? null : _unlockVault,
+                  onPressed: _loading ? null : (_pinSet ? _unlockVault : () => _showPinSetupDialog()),
                   child: _loading 
                     ? const CircularProgressIndicator(color: Colors.white) 
-                    : Text(_usePin ? "Unlock with PIN" : "Unlock with Password", style: const TextStyle(color: AppColors.spaceDark, fontWeight: FontWeight.bold)),
+                    : Text(_pinSet ? "Unlock" : "Set PIN", style: const TextStyle(color: AppColors.spaceDark, fontWeight: FontWeight.bold)),
                 ),
                 const SizedBox(height: 16),
-                if (_biometricAvailable)
+                if (_biometricAvailable && _pinSet)
                   Column(
                     children: [
                       IconButton(
                         icon: const Icon(Icons.fingerprint_rounded, size: 50, color: AppColors.roseSpark),
                         onPressed: _unlockWithBiometrics,
                       ),
-                      const Text("Biometric Quick Unlock", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                      const Text("Biometric Unlock", style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                     ],
                   ),
               ],
@@ -1243,7 +1204,6 @@ class DashboardScreen extends ConsumerWidget {
             icon: const Icon(Icons.lock_reset_rounded, color: AppColors.goldAccent),
             onPressed: () {
               ref.read(keyCustodyProvider).lockVault();
-              ref.read(vaultKeyProvider.notifier).state = null;
               context.go('/unlock');
             },
           )
@@ -1404,10 +1364,6 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
   final _plaintextPassword = TextEditingController();
 
   Future<void> _saveEntry() async {
-    final key = ref.read(vaultKeyProvider);
-    if (key == null) return;
-    
-    final encryptedVal = await AesEncryption.encrypt(_plaintextPassword.text.trim(), key);
     final repo = ref.read(vaultRepositoryProvider);
     final user = ref.read(currentUserProvider);
 
@@ -1418,7 +1374,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
         platformName: _platformName.text.trim(),
         websiteUrl: _webUrl.text.trim(),
         usernameEmail: _username.text.trim(),
-        encryptedPassword: encryptedVal,
+        encryptedPassword: _plaintextPassword.text.trim(),
       );
       await repo.saveCredential(credential);
       ref.invalidate(vaultCredentialsProvider);
@@ -1458,7 +1414,7 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: AppColors.auroraCyan, minimumSize: const Size(double.infinity, 50)),
               onPressed: _saveEntry,
-              child: const Text("Encrypt & Save", style: TextStyle(color: AppColors.spaceDark)),
+              child: const Text("Save", style: TextStyle(color: AppColors.spaceDark)),
             ),
           ],
         ),
@@ -1469,12 +1425,11 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
   @override
   Widget build(BuildContext context) {
     final credentialsAsync = ref.watch(vaultCredentialsProvider);
-    final key = ref.watch(vaultKeyProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text("Decrypted Cipher Vault", style: TextStyle(color: Colors.white)),
+        title: const Text("Password Vault", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -1496,29 +1451,23 @@ class _VaultScreenState extends ConsumerState<VaultScreen> {
               return Card(
                 color: AppColors.cardBg,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: FutureBuilder<String>(
-                  future: cred.getDecryptedPassword(key!),
-                  builder: (context, snap) {
-                    final pass = snap.data ?? "••••••••";
-                    return ListTile(
-                      title: Text(cred.platformName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      subtitle: Text(cred.usernameEmail ?? '', style: const TextStyle(color: AppColors.textSecondary)),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(pass, style: const TextStyle(color: AppColors.auroraCyan, fontFamily: 'monospace')),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: const Icon(Icons.delete_rounded, color: AppColors.errorRed, size: 20),
-                            onPressed: () async {
-                              await ref.read(vaultRepositoryProvider).deleteCredential(cred.id);
-                              ref.invalidate(vaultCredentialsProvider);
-                            },
-                          )
-                        ],
-                      ),
-                    );
-                  },
+                child: ListTile(
+                  title: Text(cred.platformName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  subtitle: Text(cred.usernameEmail ?? '', style: const TextStyle(color: AppColors.textSecondary)),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(cred.encryptedPassword, style: const TextStyle(color: AppColors.auroraCyan, fontFamily: 'monospace')),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        icon: const Icon(Icons.delete_rounded, color: AppColors.errorRed, size: 20),
+                        onPressed: () async {
+                          await ref.read(vaultRepositoryProvider).deleteCredential(cred.id);
+                          ref.invalidate(vaultCredentialsProvider);
+                        },
+                      )
+                    ],
+                  ),
                 ),
               );
             },

@@ -1,5 +1,3 @@
-import '../security/aes_encryption.dart';
-
 // Helper date formatter/parsers
 DateTime? parseDate(dynamic value) {
   if (value == null) return null;
@@ -223,16 +221,11 @@ class PlatformCredential {
         'notes': notes,
       };
 
-  /// Decrypt password on the fly using key custody session credentials.
-  Future<String> getDecryptedPassword(List<int> masterKey) async {
-    return await AesEncryption.decrypt(encryptedPassword, masterKey);
-  }
+  /// Get password (no encryption)
+  String get password => encryptedPassword;
 
-  /// Decrypt notes on the fly using key custody session credentials.
-  Future<String?> getDecryptedNotes(List<int> masterKey) async {
-    if (notes == null) return null;
-    return await AesEncryption.decrypt(notes!, masterKey);
-  }
+  /// Get notes (no encryption)
+  String? get decryptedNotes => notes;
 }
 
 // --------------------------------------------------------------------
