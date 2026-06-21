@@ -24,13 +24,19 @@ jobs:
 
       - name: Build iOS IPA
         run: |
-          flutter build ipa --export-method app-store \
+          flutter build ios --release --no-codesign \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          mkdir -p build/ios/ipa
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -R Runner.app Payload/
+          zip -r -q ../ipa/app.ipa Payload
+          cd ../../..
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: build/ios/ipa/*.ipa
+          files: build/ios/ipa/app.ipa
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
