@@ -870,12 +870,6 @@ class MainNavigationScaffold extends ConsumerWidget {
                                                 fontWeight: FontWeight.w500,
                                               ),
                                             ),
-                                              style: TextStyle(
-                                                color: isSelected ? Colors.white : AppColors.textSecondary,
-                                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                                fontSize: 13,
-                                              ),
-                                            ),
                                           ],
                                         ),
                                       ),
