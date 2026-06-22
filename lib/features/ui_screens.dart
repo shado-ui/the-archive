@@ -5,9 +5,14 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/constants/colors.dart';
+import '../core/constants/app_constants.dart';
 import '../core/models/dart_models.dart';
 import '../core/providers/state_providers.dart';
 import '../core/security/key_custody.dart';
+import '../core/widgets/app_button.dart';
+import '../core/widgets/app_text_field.dart';
+import '../core/utils/app_logger.dart';
+import '../core/utils/validators.dart';
 
 String generateUUID() {
   final random = Random.secure();
@@ -341,22 +346,31 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
     final user = ref.read(currentUserProvider);
     
     try {
+      AppLogger.info('Attempting vault unlock');
+      
       if (user == null) throw Exception("Session inactive. Re-authenticate.");
       
       final pin = _pinController.text.trim();
-      if (pin.isEmpty) throw Exception("Please enter your PIN");
+      if (!Validators.isValidPin(pin)) {
+        throw Exception("Please enter a valid 6-digit PIN");
+      }
+      
       final success = await keyCustody.unlockWithPin(pin);
       if (!success) throw Exception("Invalid PIN");
+      
+      AppLogger.info('Vault unlocked successfully');
       
       // Check if partner profile exists, if not redirect to setup
       final partnerProfile = await partnerRepo.getPartnerProfile(user.id);
       if (partnerProfile == null && mounted) {
+        AppLogger.info('No partner profile found, redirecting to setup');
         context.go('/setup');
         return;
       }
       
       if (mounted) context.go('/dashboard');
     } catch (e) {
+      AppLogger.error('Vault unlock failed', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Unlock Failed: ${e.toString()}")),
@@ -372,8 +386,11 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
     final partnerRepo = ref.read(partnerProfileRepositoryProvider);
     final user = ref.read(currentUserProvider);
     
+    AppLogger.info('Attempting biometric unlock');
+    
     final success = await keyCustody.unlockWithBiometrics();
     if (success) {
+      AppLogger.info('Biometric unlock successful');
       // Check if partner profile exists, if not redirect to setup
       final partnerProfile = await partnerRepo.getPartnerProfile(user!.id);
       if (partnerProfile == null && mounted) {
@@ -383,6 +400,7 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
       
       if (mounted) context.go('/dashboard');
     } else {
+      AppLogger.warning('Biometric unlock failed');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Biometric verification failed. Use PIN.")),
@@ -397,38 +415,19 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.glassBg,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppConstants.borderRadiusLarge)),
         title: const Text("Set Up PIN", style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 8),
-            TextField(
+            AppTextField(
               controller: pinController,
+              label: "Enter 6-digit PIN",
+              hint: "••••••",
               obscureText: true,
-              maxLength: 6,
+              maxLength: AppConstants.pinLength,
               keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white, fontSize: 18),
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                labelText: "Enter 6-digit PIN",
-                labelStyle: const TextStyle(color: AppColors.textSecondary),
-                counterStyle: const TextStyle(color: AppColors.textSecondary),
-                filled: true,
-                fillColor: AppColors.cardBg,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.glassBorder),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.glassBorder),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.auroraCyan),
-                ),
-              ),
             ),
           ],
         ),
@@ -437,12 +436,14 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text("Cancel", style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
           ),
-          ElevatedButton(
+          AppButton(
+            label: "Set PIN",
             onPressed: () async {
               final pin = pinController.text.trim();
-              if (pin.length == 6) {
+              if (Validators.isValidPin(pin)) {
                 final keyCustody = ref.read(keyCustodyProvider);
                 await keyCustody.savePin(pin);
+                AppLogger.info('PIN set successfully');
                 if (mounted) {
                   setState(() => _pinSet = true);
                   Navigator.pop(context);
@@ -452,11 +453,6 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
                 }
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.auroraCyan,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text("Set PIN", style: TextStyle(color: AppColors.spaceDark, fontWeight: FontWeight.bold, fontSize: 16)),
           ),
         ],
       ),
@@ -497,48 +493,20 @@ class _VaultUnlockScreenState extends ConsumerState<VaultUnlockScreen> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
-                  TextField(
+                  AppTextField(
                     controller: _pinController,
+                    label: "PIN",
+                    hint: "••••••",
                     obscureText: true,
-                    maxLength: 6,
+                    maxLength: AppConstants.pinLength,
                     keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white, fontSize: 20, letterSpacing: 8),
-                    textAlign: TextAlign.center,
-                    decoration: InputDecoration(
-                      labelText: "PIN",
-                      labelStyle: const TextStyle(color: AppColors.textSecondary),
-                      counterStyle: const TextStyle(color: AppColors.textSecondary),
-                      filled: true,
-                      fillColor: AppColors.cardBg,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.glassBorder),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.glassBorder),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: AppColors.auroraCyan, width: 2),
-                      ),
-                    ),
                   ),
                   const SizedBox(height: 24),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.auroraCyan,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        elevation: 0,
-                      ),
-                      onPressed: _loading ? null : (_pinSet ? _unlockVault : () => _showPinSetupDialog()),
-                      child: _loading 
-                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                        : Text(_pinSet ? "Unlock" : "Create PIN", style: const TextStyle(color: AppColors.spaceDark, fontWeight: FontWeight.bold, fontSize: 16)),
-                    ),
+                  AppButton(
+                    label: _pinSet ? "Unlock" : "Create PIN",
+                    onPressed: _loading ? null : (_pinSet ? _unlockVault : () => _showPinSetupDialog()),
+                    isLoading: _loading,
+                    isFullWidth: true,
                   ),
                   const SizedBox(height: 24),
                   if (_biometricAvailable && _pinSet)
