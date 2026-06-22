@@ -1,12 +1,9 @@
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../providers/state_providers.dart';
 import '../../features/ui_screens.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final keyCustody = ref.watch(keyCustodyProvider);
-
   return GoRouter(
     initialLocation: '/',
     redirect: (context, state) {
@@ -21,15 +18,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         return isLoggingIn ? null : '/login';
       }
 
-      // If authenticated in Supabase but local vault is locked, force vault unlock
-      final isUnlockingVault = state.matchedLocation == '/unlock';
-      final isSetup = state.matchedLocation == '/setup';
-      if (!keyCustody.isUnlocked) {
-        return isUnlockingVault || isSetup ? null : '/unlock';
-      }
-
-      // If logged in and unlocked, prevent access to login/unlock/setup routes
-      if (isLoggingIn || isUnlockingVault || isSetup) {
+      // If logged in, prevent access to login route
+      if (isLoggingIn) {
         return '/dashboard';
       }
 
@@ -43,14 +33,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
-      ),
-      GoRoute(
-        path: '/unlock',
-        builder: (context, state) => const VaultUnlockScreen(),
-      ),
-      GoRoute(
-        path: '/setup',
-        builder: (context, state) => const SetupScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => MainNavigationScaffold(child: child),

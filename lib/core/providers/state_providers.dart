@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../security/key_custody.dart';
 import '../repositories/repositories.dart';
 import '../models/dart_models.dart';
 import '../constants/colors.dart';
@@ -61,20 +60,8 @@ final supabaseClientProvider = Provider<SupabaseClient>((ref) {
   return Supabase.instance.client;
 });
 
-final keyCustodyProvider = Provider<KeyCustodyService>((ref) {
-  return KeyCustodyService();
-});
-
 // --------------------------------------------------------------------
-// 2. Vault Lock State Providers
-// --------------------------------------------------------------------
-final vaultLockedProvider = StateProvider<bool>((ref) {
-  final custody = ref.watch(keyCustodyProvider);
-  return !custody.isUnlocked;
-});
-
-// --------------------------------------------------------------------
-// 3. Database Repositories Providers
+// 2. Database Repositories Providers
 // --------------------------------------------------------------------
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final client = ref.watch(supabaseClientProvider);
