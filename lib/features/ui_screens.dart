@@ -559,7 +559,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   bool _loading = false;
 
   final List<String> _steps = [
-    "Welcome to The Krisha Archive",
+    "Welcome to The Archive",
     "Partner Information",
     "Setup Complete",
   ];
@@ -567,6 +567,8 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
   Future<void> _completeSetup() async {
     setState(() => _loading = true);
     try {
+      AppLogger.info('Starting partner profile setup');
+      
       final partnerRepo = ref.read(partnerProfileRepositoryProvider);
       final user = ref.read(currentUserProvider);
       
@@ -592,14 +594,16 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       );
       
       await partnerRepo.upsertPartnerProfile(partnerProfile);
+      AppLogger.info('Partner profile created successfully');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Setup complete! Welcome to The Krisha Archive")),
+          const SnackBar(content: Text("Setup complete! Welcome to The Archive")),
         );
         context.go('/dashboard');
       }
     } catch (e) {
+      AppLogger.error('Setup failed', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Setup failed: ${e.toString()}")),
@@ -655,29 +659,21 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
                   children: [
                     if (_currentStep > 0)
                       Expanded(
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.getTextSecondary(isDark).withOpacity(0.3),
-                            minimumSize: const Size(double.infinity, 50),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
+                        child: AppButton(
+                          label: "Back",
                           onPressed: _previousStep,
-                          child: Text("Back", style: TextStyle(color: AppColors.getTextPrimary(isDark))),
+                          backgroundColor: AppColors.getTextSecondary(isDark).withOpacity(0.3),
+                          textColor: AppColors.getTextPrimary(isDark),
                         ),
                       ),
                     if (_currentStep > 0) const SizedBox(width: 16),
                     Expanded(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.getAccent(appTheme),
-                          minimumSize: const Size(double.infinity, 50),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
+                      child: AppButton(
+                        label: _currentStep == _steps.length - 1 ? "Complete Setup" : "Next",
                         onPressed: _loading ? null : (_currentStep == _steps.length - 1 ? _completeSetup : _nextStep),
-                        child: _loading 
-                          ? const CircularProgressIndicator(color: Colors.white)
-                          : Text(_currentStep == _steps.length - 1 ? "Complete Setup" : "Next", 
-                              style: TextStyle(color: AppColors.getTextPrimary(isDark), fontWeight: FontWeight.bold)),
+                        isLoading: _loading,
+                        backgroundColor: AppColors.getAccent(appTheme),
+                        textColor: AppColors.getTextPrimary(isDark),
                       ),
                     ),
                   ],
@@ -723,7 +719,7 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
             const SizedBox(height: 24),
             _buildFeatureItem(Icons.favorite_rounded, "Memories & Stories", "Preserve your precious moments together"),
             const SizedBox(height: 16),
-            _buildFeatureItem(Icons.lock_rounded, "Secure Vault", "AES-256 encrypted password manager"),
+            _buildFeatureItem(Icons.lock_rounded, "Secure Vault", "PIN-protected password manager"),
             const SizedBox(height: 16),
             _buildFeatureItem(Icons.calendar_month_rounded, "Timeline & Events", "Track anniversaries and milestones"),
             const SizedBox(height: 16),
@@ -733,28 +729,16 @@ class _SetupScreenState extends ConsumerState<SetupScreen> {
       case 1:
         return Column(
           children: [
-            TextField(
+            AppTextField(
               controller: _partnerNameController,
-              style: TextStyle(color: AppColors.getTextPrimary(isDark)),
-              decoration: InputDecoration(
-                labelText: "Partner's Full Name *",
-                labelStyle: TextStyle(color: AppColors.getTextSecondary(isDark)),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.getGlassBorder(isDark))),
-                hintText: "e.g., Krisha Johnson",
-                hintStyle: TextStyle(color: AppColors.getTextMuted(isDark)),
-              ),
+              label: "Partner's Full Name *",
+              hint: "e.g., Krisha Johnson",
             ),
             const SizedBox(height: 24),
-            TextField(
+            AppTextField(
               controller: _nicknameController,
-              style: TextStyle(color: AppColors.getTextPrimary(isDark)),
-              decoration: InputDecoration(
-                labelText: "Nickname (Optional)",
-                labelStyle: TextStyle(color: AppColors.getTextSecondary(isDark)),
-                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppColors.getGlassBorder(isDark))),
-                hintText: "e.g., Baby, Love, Sweetheart",
-                hintStyle: TextStyle(color: AppColors.getTextMuted(isDark)),
-              ),
+              label: "Nickname (Optional)",
+              hint: "e.g., Baby, Love, Sweetheart",
             ),
             const SizedBox(height: 16),
             Text(
