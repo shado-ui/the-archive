@@ -11,7 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:krisha_archive/main.dart';
+import 'package:the_archive/main.dart';
 
 void main() {
   setUpAll(() async {
@@ -25,7 +25,7 @@ void main() {
 
   testWidgets('App splash renders smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const ProviderScope(child: TheKrishaArchive()));
+    await tester.pumpWidget(const ProviderScope(child: TheArchive()));
 
     // Verify that it renders MaterialApp
     expect(find.byType(MaterialApp), findsOneWidget);

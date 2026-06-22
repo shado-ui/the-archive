@@ -14,13 +14,13 @@ void main() async {
 
   runApp(
     const ProviderScope(
-      child: TheKrishaArchive(),
+      child: TheArchive(),
     ),
   );
 }
 
-class TheKrishaArchive extends ConsumerWidget {
-  const TheKrishaArchive({super.key});
+class TheArchive extends ConsumerWidget {
+  const TheArchive({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,7 +37,7 @@ class TheKrishaArchive extends ConsumerWidget {
         router.go('/unlock');
       },
       child: MaterialApp.router(
-        title: 'The Krisha Archive',
+        title: 'The Archive',
         debugShowCheckedModeBanner: false,
         themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
         theme: ThemeData(

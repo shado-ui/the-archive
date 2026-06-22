@@ -114,7 +114,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
             Icon(Icons.history_edu_rounded, size: 80, color: AppColors.roseSpark),
             SizedBox(height: 16),
             Text(
-              "THE KRISHA ARCHIVE",
+              "THE ARCHIVE",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
@@ -1076,7 +1076,7 @@ class MainNavigationScaffold extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                "THE KRISHA ARCHIVE",
+                                "THE ARCHIVE",
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 14,
